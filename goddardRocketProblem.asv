@@ -9,6 +9,10 @@
 close; clear all; clc; 
 tic 
 
+% Units 
+LU = CelestialBodyConstants.EARTH_RADIUS; 
+mu = GravitationalParameter.EARTH; 
+
 % Rocket Properties
 thrust = 3.5; 
 effectiveExhaustVelocity = 0.5; 
@@ -21,7 +25,7 @@ finalMass = 0.6;
 initialState = [1 0 1]'; % Height starts at 1 since it begins at the Earth's surface 
 
 % Initialize Costates 
-initialCostate = rand(3,1);
+initialCostate = [-2 5 3]';
 
 % Build Adjoint State 
 adjointState = [initialState; initialCostate]; 
@@ -34,11 +38,18 @@ odeopts = odeset('RelTol', 1e-10, 'AbsTol', 1e-12);
 % Propagate dynamics
 [time, trajectory] = ode45(@rocketDynamics_symbolic, epochs, adjointState, odeopts, thrust, effectiveExhaustVelocity); 
 
-% Propagate Trajectory 
+% Propagate Trajectory
+thrustHistory = zeros(1, length(time)); 
+switchFunction = zeros(1, length(time)); 
 for i = 1:length(time)
     [~, thrustHistory(i), switchFunction(i)] = rocketDynamics_symbolic(time(i), trajectory(i,:)', thrust, effectiveExhaustVelocity); 
 end 
 
+%% Results 
+
+% Maximum Rocket Altitude 
+maxAltitude = (max(trajectory(:,1))*LU) - LU; % Km
+fprintf('\n Maximum Rocket Altitude = %skm \n', num2str(maxAltitude))
 
 %% Plotting 
 
@@ -63,12 +74,20 @@ xlabel('Time')
 ylabel('Mass') 
 set(findall(gcf,'-property', 'FontSize'), 'FontSize', 16)
 
+figure() 
+plot(time, switchFunction, 'LineWidth', 1.5) 
+xlabel('Time') 
+ylabel('Switch Function') 
+set(findall(gcf,'-property', 'FontSize'), 'FontSize', 16)
+
 % Plot Costates
+% Height Costate 
+figure()
 subplot 311 
 plot(time, trajectory(:,4), 'LineWidth', 1.5) 
 xlabel('Time')  
 ylabel('\lambda_{h}')
-
+% Velocity Costate
 subplot 312 
 plot(time, trajectory(:,5), 'LineWidth', 1.5) 
 xlabel('Time') 
@@ -78,6 +97,12 @@ subplot 313
 plot(time, trajectory(:,6), 'LineWidth', 1.5) 
 xlabel('Time') 
 ylabel('\lambda_{m}')
+
 % Set Font Size 
 set(findall(gcf,'-property', 'FontSize'), 'FontSize', 16)
+
+
+%% Record Runtime 
+runtime = toc; 
+fprintf('\n Program Runtime: %ss \n', num2str(runtime))
 
