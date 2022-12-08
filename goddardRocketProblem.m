@@ -25,31 +25,25 @@ finalMass = 0.6;
 initialState = [1 0 1]'; % Height starts at 1 since it begins at the Earth's surface 
 
 % Initialize Costates 
-initialCostate = [-2 5 0]';
-initialCostate = rand(3,1); 
+initialCostate = [0 5 0]';
+% initialCostate = rand(3,1); 
 
 % Build Adjoint State 
 adjointState = [initialState; initialCostate]; 
 
 % Set timespan
-epochs = [0 0.3]; % This is a guess, but the final time is free 
+epochs = [0 0.2]; % This is a guess, but the final time is free 
 
 % Smoothing Parameter
-rho = 1; 
+throttleSmoothing = 1; 
 
 % Integrator options
-odeopts = odeset('RelTol', 1e-10, 'AbsTol', 1e-12);
+odeopts = odeset('RelTol', 1e-10, 'AbsTol', 1e-12, 'Events', @singularArcs);
 % Propagate dynamics
-[time, trajectory] = ode45(@rocketDynamics_symbolic, epochs, adjointState, odeopts, thrust, effectiveExhaustVelocity, rho); 
+[time, trajectory] = ode45(@rocketDynamics_bang, epochs, adjointState, odeopts, thrust, effectiveExhaustVelocity, throttleSmoothing); 
 
-% Propagate Trajectory
-thrustHistory = zeros(1, length(time)); 
-switchFunction = zeros(1, length(time)); 
-Hamiltonian = zeros(1, length(time)); 
-Tsing = zeros(1, length(time)); 
-for i = 1:length(time)
-    [~, thrustHistory(i), switchFunction(i), Hamiltonian(i), Tsing(i)] = rocketDynamics_symbolic(time(i), trajectory(i,:)', thrust, effectiveExhaustVelocity,rho); 
-end 
+% Propagate Trajectory 
+[stateDerivative,thrustHistory, switchFunction, swtichFunctionDerivative, Hamiltonian] = rocketDynamics_bang(time,trajectory',thrust,effectiveExhaustVelocity,throttleSmoothing);
 
 %% Results 
 
@@ -87,13 +81,6 @@ xlabel('Time')
 ylabel('Switch Function') 
 set(findall(gcf,'-property', 'FontSize'), 'FontSize', 16)
 
-% Plot Tsing
-figure() 
-plot(time, Tsing, 'LineWidth', 1.5) 
-xlabel('Time') 
-ylabel('T_{sing}') 
-set(findall(gcf,'-property', 'FontSize'), 'FontSize', 16)
-
 % Plot Hamiltonian
 figure() 
 plot(time, Hamiltonian, 'LineWidth', 1.5) 
@@ -126,4 +113,13 @@ set(findall(gcf,'-property', 'FontSize'), 'FontSize', 16)
 %% Record Runtime 
 runtime = toc; 
 fprintf('\n Program Runtime: %ss \n', num2str(runtime))
+
+%% Events 
+function [value,isterminal,direction] = events(t,x, varargin)
+% Locate the time when height passes through zero in a decreasing direction
+% and stop integration.
+value = x(3)-0.6;     % detect height = 0
+isterminal = 1;   % stop the integration
+direction = -1;   % negative direction
+end 
 

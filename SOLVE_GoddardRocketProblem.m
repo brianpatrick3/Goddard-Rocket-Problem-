@@ -14,12 +14,12 @@ LU = CelestialBodyConstants.EARTH_RADIUS;
 mu = GravitationalParameter.EARTH; 
 
 % Rocket Properties
-thrust = 3.5; 
-effectiveExhaustVelocity = 0.5; 
-% Rocket.dynamicPressureMax = 10; 
+Rocket.thrust = 3.5; 
+Rocket.effectiveExhaustVelocity = 0.5;  
+Rocket.throttleSmoothing = 1; 
 
-% Final Mass 60% of unity
-finalMass = 0.6; 
+% Define Final Boundary Conditions
+finalState = [nan, 0, 0.6]'; % Final height = free , lam_h = 0
 
 % Set initial State [height, velocity, mass] 
 initialState = [1 0 1]'; % Height starts at 1 since it begins at the Earth's surface 
@@ -32,18 +32,21 @@ initialCostate = [0 1 1]';
 adjointState = [initialState; initialCostate]; 
 
 % Set timespan
-epochs = [0 0.2]; % This is a guess, but the final time is free 
-
-% Smoothing Parameter
-throttleSmoothing = 1; 
+epochs = [0 0.3]; % This is a guess, but the final time is free 
 
 % Integrator options
 odeopts = odeset('RelTol', 1e-10, 'AbsTol', 1e-12, 'Events', @events);
 % Propagate dynamics
-[time, trajectory] = ode45(@rocketDynamics_bang, epochs, adjointState, odeopts, thrust, effectiveExhaustVelocity, throttleSmoothing); 
+[time, trajectory] = ode45(@rocketDynamics_symbolic2, epochs, adjointState, odeopts, thrust, effectiveExhaustVelocity); 
 
-% Propagate Trajectory 
-[stateDerivative,thrustHistory,switchFunction,Sdot,Hamiltonian] = rocketDynamics_bang(time,adjointState,thrust,effectiveExhaustVelocity,rho);
+% Propagate Trajectory
+thrustHistory = zeros(1, length(time)); 
+switchFunction = zeros(1, length(time)); 
+Hamiltonian = zeros(1, length(time)); 
+Tsing = zeros(1, length(time)); 
+for i = 1:length(time)
+    [~, thrustHistory(i), switchFunction(i), Hamiltonian(i), Tsing(i)] = rocketDynamics_symbolic(time(i), trajectory(i,:)', thrust, effectiveExhaustVelocity,rho); 
+end 
 
 %% Results 
 

@@ -19,27 +19,21 @@ function [cost] = goddardSingleShooting(controls, initialState, finalState, Rock
     stateHistory = adjointState; 
     done = false; 
     while ~ done 
-
-        % Compute initialValue of Switch Function and Derivative 
-        [~, ~, S, Sdot] = rocketDynamics_bang(epoch,adjointState,thrust,effectiveExhaustVelocity,throttleSmoothing); 
         
         % Update timeSpan 
         timeSpan = epochs; 
         % Integrate Dynamics
-        tolerance = 1e-3; 
-        if S && Sdot < tolerance  
-            [time, trajectory] = ode89(@rocketDynamics_singular, timeSpan, adjointState, odeopts, thrust, effectiveExhaustVelocity);
-        else
+        if S && Sdot > tolerance 
             [time, trajectory] = ode89(@rocketDynamics_bang, timeSpan, adjointState, odeopts, thrust, effectiveExhaustVelocity, throttleSmoothing);
-        end
+        else 
+            [time, trajectory] = ode89(@rocketDynamics_singular, timeSpan, adjointState, odeopts, thrust, effectiveExhaustVelocity);
 
+        
         % Check if final time is reached 
         done = (time(end) == finalEpoch); 
         
         % Set initialEpoch to finalEpoch of last leg 
         epochs = [time(end), finalEpoch]; 
-        % Set adjointState to finalState of last leg 
-        adjointState = trajectory(end,:)'; 
     
         % Append Trajectory Legs
         timeHistory = [timeHistory; time(2:end)]; 
@@ -48,9 +42,16 @@ function [cost] = goddardSingleShooting(controls, initialState, finalState, Rock
 
     end 
 
+     
+    
+    
+    
+    
+    
+    
+    
     cost = trajectory(end,1:3) - finalState; 
-    cost = rmmissing(cost);
-    cost(3) = trajectory(end,4); % Free final height : lam_h = 0
-    cost(4) = Hamiltonian(end); % Free final Epoch : H(tf) = 0
+    cost = rmmissing(cost); 
+    cost(4) = Hamiltonian(end); 
 
 end

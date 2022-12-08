@@ -40,29 +40,14 @@ costatePerturbation = transpose(-jacobian(Hamiltonian, x));
 % Switch Function 
 S = (lam2/mass - lam3/effectiveExhaustVelocity);
 
+% Switch Function Derivative 
+Sdot = -lam1/mass + lam2*drag/mass^2*(2/velocity + 1/effectiveExhaustVelocity); 
+
 % Optimal Thrust (Hyperbolic Tangential Smoothing) 
 delta_opt = 0.5*(1 + tanh(S/rho));
 
 % Compute Optimal Thrust Value 
 T_opt = delta_opt*thrust;
-
-%% Singular Arc
-
-% Compute common terms 
-[P1dot, P2dot, P3dot] = deal(costatePerturbation(1), costatePerturbation(2), costatePerturbation(3)); 
-K = (2/velocity + 1/effectiveExhaustVelocity); 
-Sdot_P1 = -1/mass; 
-Sdot_P2 = drag/mass^2 * (K); 
-Sdot_D = lam2/mass^2*(K); 
-Sdot_m = lam1/mass^2 - 2*lam2*drag/mass^3 * (K); 
-Sdot_v = 2*lam2*drag/velocity/mass^2*(1/velocity + 1/effectiveExhaustVelocity); 
-
-% Compute Grouped Terms 
-A = Sdot_D*(2*drag^2/velocity/mass + 2*drag/(height^2*velocity) + velocity*Beta*drag) + Sdot_v*(drag/mass + 1/height^2) - Sdot_P1*P1dot - Sdot_P2*P2dot;
-B = (Sdot_D*2*drag/mass/velocity - Sdot_m/effectiveExhaustVelocity + Sdot_v/mass); 
-
-% Compute Tsingular
-Tsingular = A/B; 
 
 %% Build State Derivative 
 stateDerivative = [statePerturbation; costatePerturbation]; 
@@ -71,4 +56,4 @@ stateDerivative = [statePerturbation; costatePerturbation];
 stateDerivative = subs(stateDerivative, thrust, T_opt);
 
 % Creat Symbolic File for Equations of Motion
-matlabFunction(stateDerivative, thrust, S, Hamiltonian, Tsingular, 'file', 'rocketDynamics_symbolic', 'Optimize', true, 'vars', {epoch, [x;lam], thrust, effectiveExhaustVelocity, rho}); 
+matlabFunction(stateDerivative, T_opt, S, Sdot, Hamiltonian, 'file', 'rocketDynamics_bang', 'Optimize', true, 'vars', {epoch, [x;lam], thrust, effectiveExhaustVelocity, rho}); 
