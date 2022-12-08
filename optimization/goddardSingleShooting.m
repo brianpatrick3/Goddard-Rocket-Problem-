@@ -6,8 +6,9 @@ function [cost] = goddardSingleShooting(controls, initialState, finalState, Rock
     throttleSmoothing = Rocket.throttleSmoothing; 
 
     % Define TimeSpan 
-    finalEpoch = controls(4); 
-    epochs = [0 finalEpoch]; 
+    initialEpoch = 0; 
+    finalEpoch = abs(controls(4)); 
+    epochs = [initialEpoch finalEpoch]; 
     
     % Build Adjoint State 
     initialCostates = controls(1:3); 
@@ -15,20 +16,20 @@ function [cost] = goddardSingleShooting(controls, initialState, finalState, Rock
     
     % Set odeOptions 
     odeopts = odeset('RelTol', 1e-10, 'AbsTol', 1e-12, 'Events', @singularArcs); 
-    timeHistory = initalEpoch;
+    timeHistory = initialEpoch;
     stateHistory = adjointState; 
     done = false; 
     while ~ done 
 
         % Compute initialValue of Switch Function and Derivative 
-        [~, ~, S, Sdot] = rocketDynamics_bang(epoch,adjointState,thrust,effectiveExhaustVelocity,throttleSmoothing); 
+        [~, ~, S, Sdot] = rocketDynamics_bang(epochs(1),adjointState,thrust,effectiveExhaustVelocity,throttleSmoothing); 
         
         % Update timeSpan 
         timeSpan = epochs; 
         % Integrate Dynamics
         tolerance = 1e-3; 
         if S && Sdot < tolerance  
-            [time, trajectory] = ode89(@rocketDynamics_singular, timeSpan, adjointState, odeopts, thrust, effectiveExhaustVelocity);
+            [time, trajectory] = ode89(@rocketDynamics_singular, timeSpan, adjointState, odeopts, thrust, effectiveExhaustVelocity, throttleSmoothing);
         else
             [time, trajectory] = ode89(@rocketDynamics_bang, timeSpan, adjointState, odeopts, thrust, effectiveExhaustVelocity, throttleSmoothing);
         end
@@ -43,12 +44,15 @@ function [cost] = goddardSingleShooting(controls, initialState, finalState, Rock
     
         % Append Trajectory Legs
         timeHistory = [timeHistory; time(2:end)]; 
-        stateHistory = [stateHistory; trajectory(2:end,1:3)];
-
+        stateHistory = [stateHistory, trajectory(2:end,:)'];
 
     end 
 
-    cost = trajectory(end,1:3) - finalState; 
+    % Check Hamiltonian(tf) 
+    [~, ~, ~, ~, Hamiltonian] = rocketDynamics_bang(timeHistory(end),stateHistory(:,end),thrust,effectiveExhaustVelocity,throttleSmoothing);
+
+    % Build Cost 
+    cost = stateHistory(1:3,end) - finalState; 
     cost = rmmissing(cost);
     cost(3) = trajectory(end,4); % Free final height : lam_h = 0
     cost(4) = Hamiltonian(end); % Free final Epoch : H(tf) = 0

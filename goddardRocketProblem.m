@@ -25,20 +25,20 @@ finalMass = 0.6;
 initialState = [1 0 1]'; % Height starts at 1 since it begins at the Earth's surface 
 
 % Initialize Costates 
-initialCostate = [0 5 0]';
+initialCostate = [0 2 0]';
 % initialCostate = rand(3,1); 
 
 % Build Adjoint State 
 adjointState = [initialState; initialCostate]; 
 
 % Set timespan
-epochs = [0 0.2]; % This is a guess, but the final time is free 
+epochs = [0 0.3]; % This is a guess, but the final time is free 
 
 % Smoothing Parameter
 throttleSmoothing = 1; 
 
 % Integrator options
-odeopts = odeset('RelTol', 1e-10, 'AbsTol', 1e-12, 'Events', @singularArcs);
+odeopts = odeset('RelTol', 1e-10, 'AbsTol', 1e-12, 'Events', @singularArcs, 'Events', @events);
 % Propagate dynamics
 [time, trajectory] = ode45(@rocketDynamics_bang, epochs, adjointState, odeopts, thrust, effectiveExhaustVelocity, throttleSmoothing); 
 
@@ -46,7 +46,6 @@ odeopts = odeset('RelTol', 1e-10, 'AbsTol', 1e-12, 'Events', @singularArcs);
 [stateDerivative,thrustHistory, switchFunction, swtichFunctionDerivative, Hamiltonian] = rocketDynamics_bang(time,trajectory',thrust,effectiveExhaustVelocity,throttleSmoothing);
 
 %% Results 
-
 % Maximum Rocket Altitude 
 maxAltitude = (max(trajectory(:,1))*LU) - LU; % Km
 fprintf('\n Maximum Rocket Altitude = %skm \n', num2str(maxAltitude))

@@ -1,4 +1,4 @@
-function [stateDerivative,Tsingular,S,Sdot,Hamiltonian] = rocketDynamics_singular(epoch,in2,thrust,effectiveExhaustVelocity)
+function [stateDerivative,Tsingular,S,Sdot,Hamiltonian] = rocketDynamics_singular(epoch,in2,thrust,effectiveExhaustVelocity, throttleSmoothing)
 %rocketDynamics_singular
 %    [stateDerivative,Tsingular,S,Sdot,Hamiltonian] = rocketDynamics_singular(EPOCH,IN2,THRUST,effectiveExhaustVelocity,RHO)
 

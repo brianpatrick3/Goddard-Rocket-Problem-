@@ -10,6 +10,12 @@ lam1 = in2(4,:);
 lam2 = in2(5,:);
 lam3 = in2(6,:);
 mass = in2(3,:);
+
+% Check if mass is spent 
+if mass <= 0.6 
+    thrust = 0; 
+end
+
 velocity = in2(2,:);
 t2 = velocity.^2;
 t3 = 1.0./effectiveExhaustVelocity;

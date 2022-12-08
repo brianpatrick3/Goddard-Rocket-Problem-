@@ -25,28 +25,34 @@ finalState = [nan, 0, 0.6]'; % Final height = free , lam_h = 0
 initialState = [1 0 1]'; % Height starts at 1 since it begins at the Earth's surface 
 
 % Initialize Costates 
-initialCostate = [0 1 1]';
-% initialCostate = rand(3,1); 
+initialCostate = [0 0.1 0]'; 
 
 % Build Adjoint State 
 adjointState = [initialState; initialCostate]; 
 
 % Set timespan
-epochs = [0 0.3]; % This is a guess, but the final time is free 
+initialEpoch = 0; 
+finalEpoch = 0.2; 
+epochs = [initialEpoch finalEpoch]; % This is a guess, but the final time is free 
 
-% Integrator options
-odeopts = odeset('RelTol', 1e-10, 'AbsTol', 1e-12, 'Events', @events);
-% Propagate dynamics
-[time, trajectory] = ode45(@rocketDynamics_symbolic2, epochs, adjointState, odeopts, thrust, effectiveExhaustVelocity); 
+% Set controls 
+controls = [initialCostate; finalEpoch];
 
-% Propagate Trajectory
-thrustHistory = zeros(1, length(time)); 
-switchFunction = zeros(1, length(time)); 
-Hamiltonian = zeros(1, length(time)); 
-Tsing = zeros(1, length(time)); 
-for i = 1:length(time)
-    [~, thrustHistory(i), switchFunction(i), Hamiltonian(i), Tsing(i)] = rocketDynamics_symbolic(time(i), trajectory(i,:)', thrust, effectiveExhaustVelocity,rho); 
-end 
+% Define Solver Options 
+solverOptions = optimoptions('fsolve', ...
+                             'Algorithm','trust-region-dogleg', ...
+                             'Display','iter', ...
+                             'FiniteDifferenceType','central', ...
+                             'FunctionTolerance', 1e-16, ...
+                             'OptimalityTolerance', 1e-16, ...
+                             'FiniteDifferenceStepSize', 1e-6, ...
+                             'StepTolerance', 1e-16, ...
+                             'MaxFunctionEvaluations', 2000, ...
+                             'MaxIterations', 1000, ...
+                             'UseParallel', true); 
+
+[solution, residuals] = fsolve(@TEST_goddardSingleShooting, controls, solverOptions, initialState, finalState, Rocket); 
+
 
 %% Results 
 
@@ -128,7 +134,7 @@ fprintf('\n Program Runtime: %ss \n', num2str(runtime))
 function [value,isterminal,direction] = events(t,x, varargin)
 % Locate the time when height passes through zero in a decreasing direction
 % and stop integration.
-value = x(3)-0.6;     % detect height = 0
+value = x(3)-0.6;     % detect mass = 0.6
 isterminal = 1;   % stop the integration
 direction = -1;   % negative direction
 end 
